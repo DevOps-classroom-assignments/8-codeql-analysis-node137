@@ -2,16 +2,40 @@ name: CodeQL + Docker CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   analyze:
     # Use ubuntu-latest for the analysis job
-    # Define permissions for the job
-    # Define language to be analyzed
     name: CodeQL Analysis
+    runs-on: ubuntu-latest
+
+    # Define permissions for the job
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # CodeQL initialization
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          # Define language to be analyzed
+          languages: go
+
+      # Autobuild helps CodeQL understand the Go structure
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      # Perform the CodeQL analysis
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
 
   docker:
     name: Docker Build & Run
@@ -19,3 +43,24 @@ jobs:
     needs: analyze
 
     # Define steps to build and run the Docker container
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build Docker Image
+        run: docker build -t go-web-server .
+
+      - name: Run Docker container and test endpoint
+        run: |
+          # start the container in detached mode
+          docker run -d -p 8080:8080 --name test-server go-web-server
+
+          # wait for the server to start
+          sleep 5
+
+          # test the endpoint
+          curl --fail "http://localhost:8080/readfile?file=hello.txt"
+
+          # stop the container
+          docker stop test-server
+          docker rm test-server
