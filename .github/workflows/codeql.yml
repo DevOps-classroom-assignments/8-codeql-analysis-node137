@@ -56,10 +56,15 @@ jobs:
           docker run -d -p 8080:8080 --name test-server go-web-server
 
           # wait for the server to start
-          sleep 5
+          sleep 15
 
           # test the endpoint
-          curl --fail "http://localhost:8080/readfile?file=hello.txt"
+          if ! curl -v --fail "http://localhost:8080/readfile?file=safe-files/hello.txt"; then
+            echo "--- Endpoint Test Failed ---"
+            echo "--- Container Logs ---"
+            docker logs test-server
+            exit 1
+          fi
 
           # stop the container
           docker stop test-server
